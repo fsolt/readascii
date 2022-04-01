@@ -1,0 +1,17 @@
+Package: readascii
+Type: Package
+Title: Import ASCII Datasets Using SPSS Syntax Files
+Version: 0.1.0
+Authors@R: c(
+    person("Frederick", "Solt", email = "frederick-solt@uiowa.edu", role = c("aut", "cre", "cph")))
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: Easily import ASCII datasets using SPSS syntax files.  
+    Many older survey datasets available from, e.g., the Roper Center 
+    for Public Opinion Research <https://ropercenter.cornell.edu> or
+    ICPSR <https://www.icpsr.umich.edu> are only available as ASCII
+    files with SPSS syntax.  `readascii` allows these datasets to be
+    imported to R easily.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2
