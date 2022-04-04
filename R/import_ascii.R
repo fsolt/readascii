@@ -157,8 +157,7 @@ import_ascii <- function(data_file,
                               var_cards = data_list1$card)
 
   ascii_dataset2 <- ascii_dataset %>%
-    labelled::set_variable_labels(.labels = var_labels) %>%
-    select(-respondent, -matches("card\\d+"))
+    labelled::set_variable_labels(.labels = var_labels)
 
   try(
     for(i in 1:nrow(value_labels)) {
