@@ -4,22 +4,16 @@
 \alias{import_ascii}
 \title{Import ASCII datasets using SPSS syntax files}
 \usage{
-import_ascii(
-  data_file,
-  setup_file,
-  total_cards = 1,
-  var_names,
-  var_cards = 1,
-  var_positions,
-  var_widths,
-  card_pattern,
-  respondent_pattern
-)
+import_ascii(data_file, setup_file, card_pattern, respondent_pattern)
 }
 \arguments{
 \item{data_file}{A path to an ASCII data file.}
 
 \item{setup_file}{A path to the corresponding SPSS setup file.}
+
+\item{card_pattern}{For use when the file does not contain a line for every card for every respondent (or contains extra lines that correspond to no respondent), a regular expression that matches the file's card identifier; e.g., if the card number is stored in the last digit of each line, "\\d$".}
+
+\item{respondent_pattern}{For use when the file does not contain a line for every card for every respondent (or contains extra lines that correspond to no respondent), a regular expression that matches the file's respondent identifier; e.g., if the respondent number is stored in the first four digits of each line, preceded by a space, "(?<=^\\s)\\d{4}".}
 
 \item{total_cards}{For multicard files, the number of cards in the file.}
 
@@ -30,10 +24,6 @@ import_ascii(
 \item{var_positions}{A numeric vector of the column positions in which \code{var_names} are recorded.}
 
 \item{var_widths}{A numeric vector of the widths used to record \code{var_names}.}
-
-\item{card_pattern}{For use when the file does not contain a line for every card for every respondent (or contains extra lines that correspond to no respondent), a regular expression that matches the file's card identifier; e.g., if the card number is stored in the last digit of each line, "\\d$".}
-
-\item{respondent_pattern}{For use when the file does not contain a line for every card for every respondent (or contains extra lines that correspond to no respondent), a regular expression that matches the file's respondent identifier; e.g., if the respondent number is stored in the first four digits of each line, preceded by a space, "(?<=^\\s)\\d{4}".}
 }
 \value{
 A data frame

@@ -27,15 +27,11 @@
 #' @importFrom tidyr pivot_longer spread fill separate nest
 #' @importFrom stringr str_extract str_replace str_replace_all str_detect str_trim str_c
 #' @importFrom labelled val_labels set_variable_labels
+#' @importFrom rlang is_empty
 #'
 #' @export
 import_ascii <- function(data_file,
                          setup_file,
-                         total_cards = 1,
-                         var_names,
-                         var_cards = 1,
-                         var_positions,
-                         var_widths,
                          card_pattern,
                          respondent_pattern) {
 
@@ -44,15 +40,50 @@ import_ascii <- function(data_file,
     mutate(section = str_extract(value, "^\\s*(?<!\\/\\*)[^\\*]*((DATA LIST)|(VARIABLE LABELS)|(VALUE LABELS))")) %>%
     fill(section)
 
+  videntical <- Vectorize(identical)
+
   data_list <- setup %>%
-    filter(str_detect(value, "\\w+\\s\\d+-\\d+")) %>%
-    mutate(value = str_trim(value)) %>%
+    filter(section == "DATA LIST") %>%
+    mutate(value = value %>%
+             str_trim() %>%
+             str_replace_all("-\\s+", "-") %>%
+             str_replace_all("(?<![\\w/-])(\\d+)(?![-\\d])", "\\1-\\1")) %>%
     separate(value,
-             sep = "\\s+(?=\\w+\\s\\d+-\\d+)",
-             into = LETTERS[1:5],
+             sep = "(?<=/\\d)\\s+",
+             into = c("card", "value"),
              fill = "right") %>%
-    pivot_longer(LETTERS[1:5]) %>%
+    mutate(value = if_else(is.na(value) & !str_detect(card, "/\\d+\\s*$"), str_replace(card, "/\\d+\\s+", ""), value),
+           card = if_else(videntical(card, value), NA_character_, card) %>%
+             str_replace(".*(/\\d+).*", "\\1")) %>%
+    separate(value,
+             sep = "(?<=/\\d\\d)\\s+",
+             into = c("card1", "value"),
+             fill = "right") %>%
+    mutate(value = if_else(is.na(value), str_replace(card1, "/\\d+\\s+", ""), value),
+           card1 = if_else(videntical(card1, value), NA_character_, card1),
+           card = if_else(is.na(card), card1, card)) %>%
+    fill(card) %>%
+    separate(value,
+             sep = "(?=<\\w+\\s+\\d+-\\d+)\\s+(?=\\w+\\s+\\d+-\\d+)",
+             into = LETTERS[1:20],
+             fill = "right") %>%
+    mutate(A = if_else(!str_detect(A, "\\d+-\\d+") &
+                         (str_detect(B, "\\d+-\\d+") & !is.na(B)), paste(A, B), A),
+           B = if_else(str_detect(A, B), NA_character_, B),
+           A = if_else(!str_detect(A, "\\d+-\\d+") &
+                         is.na(B) &
+                         str_detect(lead(A), "\\d+-\\d+"), paste(A, lead(A)), A),
+           A = if_else(str_detect(lag(A), A), NA_character_, A)) %>%
+    pivot_longer(LETTERS[1:20]) %>%
     filter(!is.na(value)) %>%
+    mutate(card = if_else(rep(!all(is.na(card)), nrow(.)),
+                          str_replace(card, "/", ""),
+                          "1")) %>%
+    fill(card) %>%
+    select(-card1, -name)
+
+  data_list1 <- data_list %>%
+    filter(str_detect(value, "^(\\w+\\s+\\d+-\\d+)+$")) %>%
     separate(value,
              sep = "[\\s-]+",
              into = c("variable", "first_col", "last_col", "notes"),
@@ -60,7 +91,7 @@ import_ascii <- function(data_file,
     mutate(first_col = as.numeric(first_col),
            last_col = as.numeric(last_col),
            width = last_col - first_col + 1,
-           card = 1) %>%
+           card = as.numeric(card)) %>%
     select(variable, first_col, last_col, width, card)
 
   variable_labels <- setup %>%
@@ -80,7 +111,10 @@ import_ascii <- function(data_file,
     summarise(variable = first(var),
               label = str_c(label2, collapse = " ")) %>%
     filter(!is.na(label)) %>%
-    select(-id)
+    select(-id) %>%
+    filter(variable %in% data_list1$variable)
+
+  var_labels <- split(variable_labels$label, variable_labels$variable)
 
   value_labels <- setup %>%
     filter(str_detect(section, "LABELS")) %>%
@@ -106,16 +140,21 @@ import_ascii <- function(data_file,
     select(variable, value2, label2) %>%
     nest(labels = c(value2, label2))
 
-  var_labels <- split(variable_labels$label, variable_labels$variable)
+  total_cards0 <- setup %>%
+    pull(value) %>%
+    str_subset("RECORDS=\\d+") %>%
+    str_replace(".*\\bRECORDS=(\\d+)\\b.*", "\\1")
+
+  total_cards <- ifelse(rlang::is_empty(total_cards0),
+            1,
+            as.numeric(total_cards0))
 
   ascii_dataset <- read_ascii(data_file,
-                              var_names = data_list$variable,
-                              var_positions = data_list$first_col,
-                              var_widths = data_list$width,
+                              var_names = data_list1$variable,
+                              var_positions = data_list1$first_col,
+                              var_widths = data_list1$width,
                               total_cards = total_cards,
-                              var_cards = data_list$card,
-                              card_pattern = card_pattern,
-                              respondent_pattern = respondent_pattern)
+                              var_cards = data_list1$card)
 
   ascii_dataset2 <- ascii_dataset %>%
     labelled::set_variable_labels(.labels = var_labels) %>%
@@ -138,9 +177,7 @@ read_ascii <- function(file,
                        var_names,
                        var_cards = 1,
                        var_positions,
-                       var_widths,
-                       card_pattern,
-                       respondent_pattern) {
+                       var_widths) {
 
   . <- value <- NULL   # satisfy R CMD check
 
