@@ -177,7 +177,9 @@ read_ascii <- function(file,
                        var_names,
                        var_cards = 1,
                        var_positions,
-                       var_widths) {
+                       var_widths,
+                       card_pattern,
+                       respondent_pattern) {
 
   . <- value <- NULL   # satisfy R CMD check
 
